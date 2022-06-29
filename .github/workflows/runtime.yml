@@ -1,0 +1,52 @@
+name: CMake
+
+on:
+  push:
+    tags: "*"
+
+env:
+  BUILD_TYPE: Release
+jobs:
+  build:
+    if: ${{ github.ref_type == 'tag' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build
+        run: |
+          cmake -H. -B_build && cmake --build _build
+          cd _build
+          echo "Quick Sort" > time.log
+          { time ./qsort ; } 2>> time.log
+          echo >> time.log
+          echo "Bubble Sort" >> time.log
+          { time ./bsort ; } 2>> time.log
+          mkdir ../artifacts
+          mv time.log ../artifacts
+
+      - name: Publish
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifact
+          path: artifacts/
+
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: upload time log
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/time.log
+          asset_name: time.log
+          asset_content_type: text/plain
